@@ -1,0 +1,76 @@
+# Write your solution here
+def grade_input():
+    exam_points = []
+    exercises_completed = []
+
+    # create loop to input and save grades
+    while True:
+        grade_input = input("Exam points and exercises completed: ")  # <----
+        if grade_input == "":
+            break
+
+        # splitting each kind of point from every input
+        grade_split = grade_input.split()
+        exam_points.append(int(grade_split[0]))
+        exercises_completed.append(int(grade_split[1]))  # <----
+
+    # calling function to convert exercises completed into points
+    #exercise_points = convert_into_exercise_points(exercises_completed)  # <-----
+    exercise_points = [x//10 for x in exercises_completed]
+    return exam_points, exercise_points
+
+
+def get_grade(exam_points: list, exercise_points: list):
+    grades = []
+
+    for i in range(len(exam_points)):
+        exam = exam_points[i]
+        exercise = exercise_points[i]
+        p = exam + exercise
+
+        if exam < 10 or 0 <= p <= 14:  # exam cutofff threshold
+            grades.append(0)
+        elif 15 <= p <= 17:
+            grades.append(1)
+        elif 18 <= p <= 20:
+            grades.append(2)
+        elif 21 <= p <= 23:
+            grades.append(3)
+        elif 24 <= p <= 27:
+            grades.append(4)
+        elif 28 <= p <= 30:
+            grades.append(5)
+
+    return grades
+
+
+def statistics(exam_points: list, exercise_points: list):
+    print("Statistics: ")
+
+    grades = get_grade(exam_points, exercise_points)
+    sum_points = sum(exam_points) + sum(exercise_points)
+    mean = sum_points / len(exam_points)
+
+    count_pass = 0
+    for grade in grades:  # <------
+        if grade != 0:
+            count_pass += 1
+    pass_percentage = (count_pass / len(grades)) * 100
+
+    print(f"Points average: {mean}")
+    print(f"Pass percentage: {round(pass_percentage,1)}")
+    print("Grade distribution: ")
+    print("5: " + grades.count(5) * "*")
+    print("4: " + grades.count(4) * "*")
+    print("3: " + grades.count(3) * "*")
+    print("2: " + grades.count(2) * "*")
+    print("1: " + grades.count(1) * "*")
+    print("0: " + grades.count(0) * "*")
+
+
+def main():
+    exam_points, exercise_points = grade_input()
+    statistics(exam_points, exercise_points)
+
+
+main()
