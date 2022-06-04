@@ -1,0 +1,40 @@
+from re import X
+import pygame
+import math
+pygame.init()
+
+window = pygame.display.set_mode((640,480))
+ball = pygame.image.load('ball.png')
+width=ball.get_width()
+height=ball.get_height()
+x=0
+y=0
+#x = 320+math.cos(angle)*100-robot.get_width()/2
+#y = 240+math.sin(angle)*100-robot.get_height()/2
+velocityx=1
+velocityy=1
+clock=pygame.time.Clock()
+
+while True:
+    for event in pygame.event.get():
+        if event.type==pygame.QUIT:
+            exit()
+
+    window.fill((0,0,0))
+    window.blit(ball,(x,y))
+    pygame.display.flip()
+    x += velocityx
+    if velocityx > 0 and x+width >= 640:
+        velocityx = -velocityx
+    if velocityx < 0 and x <= 0:
+        velocityx = -velocityx
+
+    y += velocityy
+    if velocityy > 0 and y+height >= 480:
+        velocityy = -velocityy
+    if velocityy < 0 and y <= 0:
+        velocityy = -velocityy
+
+    #angle+=0.01
+
+    clock.tick(300)
