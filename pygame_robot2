@@ -1,0 +1,292 @@
+
+import pygame
+from random import randint
+ 
+ 
+class Entity:
+    """Class for coins and door (stationary) obects"""
+ 
+    def __init__(self, image):
+        self.x = 0
+        self.y = 0
+        self.image = image
+        self.w = image.get_width()
+        self.h = image.get_height()
+ 
+ 
+class Monster(Entity):
+    """Class for Monster"""
+ 
+    def __init__(self, image, speed):
+        super().__init__(image)
+        self.speed = speed
+        self.target_x = 0
+        self.target_y = 0
+ 
+ 
+class Robot(Entity):
+    """Class for Robot"""
+ 
+    def __init__(self, image, speed):
+        super().__init__(image)
+        self.speed = speed
+        self.left = False
+        self.right = False
+        self.up = False
+        self.down = False
+ 
+ 
+class Game:
+ 
+    def __init__(self):
+        pygame.init()
+ 
+        self.width, self.height = 800, 600
+ 
+        self.window = pygame.display.set_mode((self.width, self.height))
+        pygame.display.set_caption('Greedy Robot')
+        self.clock = pygame.time.Clock()
+        self.fill_color = [50, 50, 50]
+        self.fill_target = [randint(25, 255) for _ in range(3)]
+ 
+        self.game_font = pygame.font.SysFont('Arial', 24, True)
+ 
+        # vvvvv Adjust these numbers as desired to adjust difficulty
+        self.fps = 60
+        self.robot_speed = 3
+        self.monster_speed = 1
+        self.min_coins = 2
+        self.max_coins = 7
+        # ^^^^^
+ 
+        self.score = 0
+        self.high_score = 0
+        self.last_level = 0
+        self.level = 0
+        self.new_game = True
+        self.game_over = False
+ 
+        self.load_images()
+        self.new_level()
+        self.main()
+    
+ 
+    def load_images(self):
+        self.images = {}
+        for img in ['coin', 'door', 'monster', 'robot']:
+            self.images[img] = pygame.image.load(''.join([img, '.png']))
+ 
+ 
+    def set_fill_color(self):
+        # Change fill color by 1 RGB per cycle, set new target color when finished
+        if self.fill_color != self.fill_target:
+            for i in range(3):
+                if self.fill_color[i] > self.fill_target[i]:
+                    self.fill_color[i] -= 1
+                elif self.fill_color[i] < self.fill_target[i]:
+                    self.fill_color[i] += 1
+        else:
+            self.fill_target = [randint(25, 200) for _ in range(3)]
+        return tuple(self.fill_color)
+    
+ 
+    def new_level(self):
+        self.level += 1
+        
+        # Spawn robot
+        self.robot = Robot(self.images['robot'], self.robot_speed)
+        self.robot.x = self.width // 3 - self.robot.w // 2
+        self.robot.y = self.height // 3 - self.robot.h // 2
+ 
+        # Spawn monster
+        self.monster = Monster(self.images['monster'], self.monster_speed)
+        self.monster.x = self.width // 3 * 2 - self.monster.w // 2
+        self.monster.y = self.height // 3 * 2 - self.monster.h // 2
+ 
+        # Spawn door
+        self.light_color = (255, 0, 0)  # Locked
+        self.door = Entity(self.images['door'])
+        self.door.x = randint(50, self.width - 50)
+        self.door.y = randint(50, self.height - 50)
+ 
+        # Make sure the door doesn't interfere with robot or monster
+        while (self.collision(self.robot, self.door) and
+              self.collision(self.monster, self.door)):
+            self.door.x = randint(50, self.width - 50)
+            self.door.y = randint(50, self.height - 50)
+        
+        # Position light above door
+        self.light_x = self.door.x + self.door.w // 2
+        self.light_y = self.door.y - 5
+        
+        # Spawn coins
+        self.coins = []
+        num_coins = randint(self.min_coins, self.max_coins)
+        for i in range(num_coins):
+            coin = Entity(self.images['coin'])
+            coin.x = randint(0, self.width - coin.w)
+            coin.y = randint(0, self.height - coin.h)
+            # Make sure coin doesn't spawn on robot or on door
+            while self.collision(self.robot, coin) and self.collision(self.door, coin):
+                coin.x = randint(0, self.width - coin.w)
+                coin.y = randint(0, self.height - coin.h)
+            self.coins.append(coin)
+ 
+ 
+    def draw_game(self):
+        self.window.fill(self.set_fill_color())
+ 
+        entities = [self.door, self.robot, self.monster] + self.coins
+        for entity in entities:
+            self.window.blit(entity.image, (entity.x, entity.y))
+        pygame.draw.circle(self.window, self.light_color, (self.light_x, self.light_y), 6)
+ 
+        score_string = f'Level: {self.level}  Coins: {self.score}'
+        score = self.game_font.render(score_string, True, (255, 255, 255))
+        self.window.blit(score, (5, 5))
+ 
+        high_score_string = f'High Score: {self.high_score}'
+        high_score = self.game_font.render(high_score_string, True, (255, 255, 255))
+        self.window.blit(high_score, (self.width - high_score.get_width() - 5, 5))
+ 
+        if self.new_game:
+            text = 'Collect all the coins to unlock the door'
+            ng = self.game_font.render(text, True, (255, 255, 255))
+            x = self.width // 2 - ng.get_width() // 2
+            y = self.height // 2 - ng.get_height() // 2
+            self.window.blit(ng, (x, y))
+            self.new_game = False
+            self.clock.tick(0.5)
+ 
+        if self.game_over:
+            text = 'G A M E  O V E R !'
+            go = self.game_font.render(text, True, (255, 0, 0))
+            x = self.width // 2 - go.get_width() // 2
+            y = self.height // 2 - go.get_height() // 2
+            self.window.blit(go, (x, y))
+ 
+        pygame.display.flip()
+ 
+        # If level has just started, pause 1 second
+        if self.last_level != self.level:
+            self.clock.tick(1)
+            self.last_level = self.level
+        self.clock.tick(self.fps)
+ 
+ 
+    def check_events(self):
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                exit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_LEFT:
+                    self.robot.left = True
+                if event.key == pygame.K_RIGHT:
+                    self.robot.right = True
+                if event.key == pygame.K_UP:
+                    self.robot.up = True
+                if event.key == pygame.K_DOWN:
+                    self.robot.down = True
+            if event.type == pygame.KEYUP:
+                if event.key == pygame.K_LEFT:
+                    self.robot.left = False
+                if event.key == pygame.K_RIGHT:
+                    self.robot.right = False
+                if event.key == pygame.K_UP:
+                    self.robot.up = False
+                if event.key == pygame.K_DOWN:
+                    self.robot.down = False
+ 
+ 
+    def move(self):
+        monster = self.monster
+        robot = self.robot
+ 
+        # Move monster towards robot
+        if monster.x < robot.x:
+            monster.x += monster.speed
+        elif monster.x > robot.x:
+            monster.x -= monster.speed
+        if monster.y < robot.y:
+            monster.y += monster.speed
+        elif monster.y > robot.y:
+            monster.y -= monster.speed
+        
+        # Move robot
+        if robot.left and robot.x >= 0:
+            robot.x -= robot.speed
+        if robot.right and robot.x <= self.width - robot.w:
+            robot.x += robot.speed
+        if robot.up and robot.y >= 0:
+            robot.y -= robot.speed
+        if robot.down and robot.y <= self.height - robot.h:
+            robot.y += robot.speed
+ 
+ 
+    def collision(self, a, b):
+        """Checks for collision between two entities"""
+        x1, y1 = a.x, a.y
+        x2, y2 = x1 + a.w, y1 + a.h
+        x3, y3 = b.x, b.y
+        x4, y4 = x3 + b.w, y3 + b.h
+        if x4 >= x1 and x3 <= x2 and y4 >= y1 and y3 <= y2:
+            return True
+        return False
+ 
+ 
+    def got_coin(self):
+        """Check if robot grabbed any of the coins, remove grabbed coins"""
+        new_coins = []
+        for coin in self.coins:
+            if self.collision(self.robot, coin):
+                self.score += 1
+                if self.score > self.high_score:
+                    self.high_score = self.score
+            else:
+                new_coins.append(coin)
+        self.coins = [c for c in new_coins]
+        if not len(self.coins):
+            # Unlock door if no coins are left
+            self.light_color = (0, 255, 0)
+ 
+ 
+    def entered_door(self):
+        # Check if door is unlocked and robot touched it
+        if self.light_color == (0, 255, 0) and self.collision(self.robot, self.door):
+            return True
+        return False
+ 
+ 
+    def lost_game(self):
+        # Check if monster caught the robot
+        if self.collision(self.robot, self.monster):
+            return True
+        return False
+ 
+ 
+    def main(self):
+        while True:
+            self.check_events()
+            self.move()
+            self.got_coin()
+ 
+            if self.entered_door():
+                self.new_level()
+ 
+            if self.lost_game():
+                self.game_over = True
+ 
+            self.draw_game()
+ 
+            if self.game_over:
+                self.clock.tick(1)
+                self.score = 0
+                self.last_level = 0
+                self.level = 0
+                self.new_game = True
+                self.game_over = False
+                self.new_level()
+ 
+ 
+if __name__ == '__main__':
+    Game()
